@@ -7,4 +7,4 @@ Sr No,Instance Type,Charge/Hour(OnDemand),Charge/Hour(Reserved),Region
 6,t3.large,$0.0450,0.506,Asia (Delhi)
 7,t3.medium,$0.0250,0.446,Asia (Delhi)
 8,t3.micro,$0.0105,0.090,Asia (Delhi)
-8,t3.micro,$0.0198,0.098,Asia (Mumbai)
+9,t3.micro,$0.0198,0.098,Asia (Mumbai)
