@@ -1,4 +1,6 @@
-﻿namespace AWSBillingEngine2
+﻿using AWSBillingEngine2.Domain_model;
+
+namespace AWSBillingEngine2
 {
     public class Bill
     {
@@ -7,34 +9,37 @@
         public int BillMonth { get; set; }
         public int BillYear { get; set; }
         public decimal TotalAmount { get; set; }
-        public List<string> ResourceType { get; set; }
-        public List<int> TotalResources { get; set; }
-        public List<TimeSpan> TotalUsedTime { get; set; }
-        public List<TimeSpan> TotalBilledTime { get; set; }
-        public List<decimal> Rate { get; set; }
-        public List<decimal> EachTotalAmount { get; set; }
-
+        public decimal DiscountAmount { get; set; }
+        public List<BillEntry?> BillEntries { get; set; }
         public Bill(string customerId, string customerName)
         {
             CustomerId = customerId;
             CustomerName = customerName;
-            ResourceType = new List<string>();
-            TotalResources = new List<int>();
-            TotalUsedTime = new List<TimeSpan>();
-            TotalBilledTime = new List<TimeSpan>();
-            Rate = new List<decimal>();
-            EachTotalAmount = new List<decimal>();
+            BillEntries = new List<BillEntry?>();
         }
-        public static Bill? FindBill(List<Bill> bills,string customerName, int billMonth)
+        
+
+        public BillEntry? GetBillEntryByRegionAndType(string instanceType, Region instanceRegion)
         {
-            return bills.FirstOrDefault(bill => bill.BillMonth == billMonth && bill.CustomerName == customerName);
+            var entry = BillEntries.FirstOrDefault(entry => entry != null && entry.Region.Equals(instanceRegion) && entry.ResourceType.Equals(instanceType));
+            return entry;
         }
 
-        public static int GetInstancetypeIndexByType(Bill bill, string instanceType)
+        public BillEntry AddBillEntry(Region region, string type)
         {
-            var index = bill.ResourceType.IndexOf(instanceType);
-            return index;
+            var billEntry = new BillEntry()
+            {
+                ResourceType = type,
+                Region = region,
+                TotalUsedTime = new TimeSpan(),
+                TotalBilledTime = new TimeSpan(),
+                EachTotalAmount = 0,
+                Discount = 0,
+                ActualAmount = 0,
+                TotalResources = 1
+            };
+            BillEntries.Add(billEntry);
+            return billEntry;
         }
     }
-    
 }

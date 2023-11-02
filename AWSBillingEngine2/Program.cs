@@ -1,6 +1,8 @@
 ﻿using AWSBillingEngine2.Domain_model;
+using AWSBillingEngine2.Domain_model.Model_Generator;
 using AWSBillingEngine2.Maps;
 using AWSBillingEngine2.Parser_model;
+using System.Security.Principal;
 
 namespace AWSBillingEngine2
 {
@@ -9,17 +11,29 @@ namespace AWSBillingEngine2
         static void Main(string[] args)
         {
             const string customerFilePath = @"..\..\..\Resources\Customer.csv";
-            const string resourceUsageFilePath = @"..\..\..\Resources\AWSResourceUsage.csv";
+            //const string resourceUsageFilePath = @"..\..\..\Resources\AWSResourceUsage.csv";
             const string resourceTypeFilePath = @"..\..\..\Resources\AWSResourceTypes.csv";
+            const string awsOnDemandResourceUsageFilePath = @"..\..\..\Resources\AWSOnDemandResourceUsage.csv";
+            const string awsReservedInstanceUsageFilePath = @"..\..\..\Resources\AWSReservedInstanceUsage.csv";
+            const string regionFilePath = @"..\..\..\Resources\Region.csv";
 
             var parsedCustomers =
                CsvProcessor.ProcessCsvFile<ParsedCustomer>(customerFilePath, new CustomerMap());
 
-            var parsedUsages = CsvProcessor.ProcessCsvFile<ParsedUsage>(resourceUsageFilePath, new AwsResourceUsagesMap());
+            //var parsedUsages = CsvProcessor.ProcessCsvFile<ParsedAwsOnDemandResourceUsage>(resourceUsageFilePath, new AwsResourceUsagesMap());
 
-            var parsedTypes = CsvProcessor.ProcessCsvFile<ParsedTypes>(resourceTypeFilePath, new Ec2InstanceTypesMap());
+            var parsedTypes = CsvProcessor.ProcessCsvFile<ParsedAwsResourceType>(resourceTypeFilePath, new Ec2InstanceTypesMap());
 
-            var customers = DomainModelGenerator.GenerateDomainModel(parsedCustomers, parsedUsages, parsedTypes);
+            var parsedOnDemandResourceUsages =
+                CsvProcessor.ProcessCsvFile<ParsedAwsOnDemandResourceUsage>(awsOnDemandResourceUsageFilePath, new AwsOnDemandResourceUsageMap());
+            var parsedReservedInstanceUsages =
+                CsvProcessor.ProcessCsvFile<ParsedAwsReservedInstanceUsage>(awsReservedInstanceUsageFilePath, new AwsReservedInstanceUsageMap());
+            var parsedRegions = CsvProcessor.ProcessCsvFile<ParsedRegion>(regionFilePath, new RegionMap());
+            
+            
+            //var customers = DomainModelGenerator.GenerateDomainModel(parsedCustomers, parsedUsages, parsedTypes);
+            var customers = DomainModelGenerator.GenerateDomainModel(parsedCustomers, parsedOnDemandResourceUsages,
+                parsedReservedInstanceUsages, parsedTypes, parsedRegions);
 
             var bills = BillGenerator.GenerateBill(customers);
             BillCsvGenerator.GenerateBillCsvFile(bills);

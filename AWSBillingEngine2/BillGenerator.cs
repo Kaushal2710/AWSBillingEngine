@@ -1,115 +1,107 @@
 ﻿using AWSBillingEngine2.Domain_model;
 using System;
 using System.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AWSBillingEngine2
 {
     internal class BillGenerator
     {
-        private static void CalculateBill(List<Bill> bills)
-        {
-            foreach (var bill in bills)
-            {
-                var totalAmount = new decimal();
-                for (var i = 0; i < bill.ResourceType.Count; i++)
-                {
-                    //bill.TotalBilledTime.Add(new TimeSpan(0, (int)Math.Ceiling(bill.TotalUsedTime[i].TotalHours), 0, 0));
-                    bill.EachTotalAmount.Add((int)bill.TotalBilledTime[i].TotalHours * bill.Rate[i]);
-                    totalAmount += bill.EachTotalAmount[i];
-                }
-
-                bill.TotalAmount = totalAmount;
-            }
-
-        }
-
         public static List<Bill> GenerateBill(List<Customer> customers)
         {
             var bills = new List<Bill>();
+
             foreach (var customer in customers)
             {
+                var freeUsageEndDate = customer.GetFreeUsageEndDate();
+                
                 foreach (var ec2Instance in customer.Ec2Instances)
                 {
                     var isSameInstance = false;
-
-                    foreach (var usage in ec2Instance.Usages)
-                    {
-                        while (usage.UsedFrom.Month <= usage.UsedUntil.Month)
+                    
+                    foreach (var usage in ec2Instance.AwsResourceUsages)
+                    { 
+                        while (usage.UsedFrom < usage.UsedUntil)
                         {
-                            var bill = Bill.FindBill(bills, customer.CustomerName, usage.UsedFrom.Month);
-                            var index = 0;
+                            BillEntry? billEntry;
+                            var bill = FindBill(bills, customer.CustomerId, usage.UsedFrom);
 
                             if (bill == null)
                             {
-                                bills = AddBill(bills, customer, usage, ec2Instance);
-                                bill = bills.Last();
+                                bill = AddBill(bills, customer, usage, ec2Instance);
+                                billEntry = bill.AddBillEntry(ec2Instance.Ec2InstanceType.Region,
+                                    ec2Instance.Ec2InstanceType.Type);
                             }
                             else
                             {
-                                index = bill.ResourceType.IndexOf(ec2Instance.Ec2InstanceType.Type);
+                                billEntry = bill.GetBillEntryByRegionAndType(ec2Instance.Ec2InstanceType.Type, ec2Instance.Ec2InstanceType.Region);
 
-                                if (!isSameInstance)
+                                if (billEntry == null)
                                 {
-                                    if (index != -1)
-                                    {
-                                        bill.TotalResources[index]++;
-                                    }
-                                    else
-                                    {
-                                        bill.ResourceType.Add(ec2Instance.Ec2InstanceType.Type);
-                                        bill.Rate.Add(ec2Instance.Ec2InstanceType.Charge);
-                                        bill.TotalUsedTime.Add(new TimeSpan());
-                                        bill.TotalBilledTime.Add(new TimeSpan());
-                                        bill.TotalResources.Add(1);
-                                        index = bill.TotalUsedTime.Count - 1;
-                                    }
+                                    billEntry = bill.AddBillEntry(ec2Instance.Ec2InstanceType.Region,
+                                        ec2Instance.Ec2InstanceType.Type);
+                                }
+                                else if (!isSameInstance)
+                                {
+                                    billEntry.TotalResources++;
                                 }
                             }
 
-                            if (usage.UsedFrom.Month == usage.UsedUntil.Month)
+                            var usedTime = billEntry.AddUsedTime(usage);
+                            var billedTime = billEntry.AddBilledTime(usedTime);
+
+                            var rate = GetRate(usage.UsageType, ec2Instance.Ec2InstanceType);
+                            billEntry.AddEachTotalAmount(billedTime, rate);
+
+                            if (usage.UsedFrom < freeUsageEndDate) //usage in Discount period
                             {
-                                bill.TotalUsedTime[index] += (usage.UsedUntil - usage.UsedFrom);
-                                bill.TotalBilledTime[index] += (new TimeSpan(0,
-                                    (int)Math.Ceiling((usage.UsedUntil - usage.UsedFrom).TotalHours), 0, 0));
-                                break;
+                                billEntry.AddDiscount(ec2Instance, usage, freeUsageEndDate, rate, billedTime);
                             }
 
-                            var lastDayOfTheMonth = DateTime.DaysInMonth(usage.UsedFrom.Year, usage.UsedFrom.Month);
-                            bill.TotalUsedTime[index] += (new DateTime(usage.UsedFrom.Year, usage.UsedFrom.Month,
-                                lastDayOfTheMonth, 23, 59, 59) - usage.UsedFrom);
-                            bill.TotalBilledTime[index] += (new TimeSpan(0, (int)Math.Ceiling((new DateTime(
-                                usage.UsedFrom.Year, usage.UsedFrom.Month,
-                                lastDayOfTheMonth, 23, 59, 59) - usage.UsedFrom).TotalHours), 0, 0));
-
-                            usage.UsedFrom = new DateTime(usage.UsedFrom.Year, usage.UsedFrom.Month + 1, 1, 0, 0,
+                            usage.UsedFrom = new DateTime(usage.UsedFrom.AddMonths(1).Year, usage.UsedFrom.AddMonths(1).Month, 1, 0, 0,
                                 0);
                         }
-
                         isSameInstance = true;
                     }
                 }
             }
-
-            CalculateBill(bills);
+            
+            CalculateBills(bills);
             return bills;
-
         }
 
-        private static List<Bill> AddBill(List<Bill> bills, Customer customer, AwsResourceUsage awsResourceUsage,
+        private static void CalculateBills(List<Bill> bills)
+        {
+            foreach (var bill in bills)
+            {
+                bill.TotalAmount = bill.BillEntries.Sum(eachTotalAmount => eachTotalAmount.EachTotalAmount);
+                bill.DiscountAmount = bill.BillEntries.Sum(discount => discount.Discount);
+            }
+        }
+
+        public static decimal GetRate(UsageType usageType, Ec2InstanceType ec2InstanceType)
+        {
+            var rate = usageType == UsageType.OnDemand
+                ? ec2InstanceType.OnDemandEc2InstanceChargePerHour
+                : ec2InstanceType.ReservedEc2InstanceChargePerHour;
+            return rate;
+        }
+
+        public static Bill? FindBill(List<Bill> bills, string customerId, DateTime usedFrom)
+        {
+            return bills.FirstOrDefault(bill => bill.BillMonth == usedFrom.Month && bill.CustomerId == customerId && bill.BillYear == usedFrom.Year);
+        }
+        private static Bill AddBill(List<Bill> bills, Customer customer, AwsResourceUsage awsOnDemandResourceUsage,
             Ec2Instance ec2Instance)
         {
             var bill = new Bill( customer.CustomerId, customer.CustomerName)
             {
-                BillMonth = awsResourceUsage.UsedFrom.Month,
-                BillYear = awsResourceUsage.UsedFrom.Year
+                BillMonth = awsOnDemandResourceUsage.UsedFrom.Month,
+                BillYear = awsOnDemandResourceUsage.UsedFrom.Year
             };
-            bill.ResourceType.Add(ec2Instance.Ec2InstanceType.Type);
-            bill.TotalResources.Add(1);
-            bill.Rate.Add(ec2Instance.Ec2InstanceType.Charge);
-            bill.TotalUsedTime.Add(new TimeSpan());
-            bill.TotalBilledTime.Add(new TimeSpan());
+            
             bills.Add(bill);
-            return bills;
+            return bill;
         }
     }
 }

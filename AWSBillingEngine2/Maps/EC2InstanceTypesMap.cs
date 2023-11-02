@@ -5,12 +5,16 @@ using CsvHelper.TypeConversion;
 
 namespace AWSBillingEngine2.Maps;
 
-public sealed class Ec2InstanceTypesMap : ClassMap<ParsedTypes>
+public sealed class Ec2InstanceTypesMap : ClassMap<ParsedAwsResourceType>
 {
     public Ec2InstanceTypesMap()
     {
         Map(m => m.InstanceType).Name("Instance Type");
-        Map(m => m.Charge).Name("Charge/Hour").TypeConverter<CustomStringToDecimalConverter>();
+        Map(m => m.OnDemandInstanceChargePerHour).Name("Charge/Hour(OnDemand)")
+            .TypeConverter<CustomStringToDecimalConverter>();
+        Map(m => m.ReservedInstanceChargePerHour).Name("Charge/Hour(Reserved)")
+            .TypeConverter<CustomStringToDecimalConverter>();
+        Map(m => m.RegionName).Name("Region");
     }
     public class CustomStringToDecimalConverter : DecimalConverter
     {
@@ -18,6 +22,10 @@ public sealed class Ec2InstanceTypesMap : ClassMap<ParsedTypes>
         {
             if (!string.IsNullOrEmpty(text) && text.StartsWith("$"))
             {
+                if (decimal.TryParse(text, out decimal output))
+                {
+                    return output;
+                }
                 if (decimal.TryParse(text.Substring(1), out decimal result))
                 {
                     return result;
