@@ -8,10 +8,12 @@ public class AwsResourceUsage
     public DateTime UsedFrom;
     public DateTime UsedUntil;
     public UsageType UsageType;
-    public AwsResourceUsage(DateTime usedFrom, DateTime usedUntil, UsageType usageType)
+    public OperatingSystem OperatingSystem;
+    public AwsResourceUsage(DateTime usedFrom, DateTime usedUntil, UsageType usageType, OperatingSystem operatingSystem)
     {
         UsedFrom = usedFrom;
         UsedUntil = usedUntil;
         UsageType = usageType;
+        OperatingSystem = operatingSystem;
     }
 }

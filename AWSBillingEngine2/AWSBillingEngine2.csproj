@@ -12,7 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Bills\" />
+    <Folder Include="deleteme\" />
+    <Folder Include="Output\" />
+    <Folder Include="Output\" />
   </ItemGroup>
 
 </Project>

@@ -14,7 +14,7 @@ public class Ec2InstanceType
         Type = type;
         OnDemandEc2InstanceChargePerHour = onDemandEc2InstanceChargePerHour;
         ReservedEc2InstanceChargePerHour = reservedEc2InstanceChargePerHour;
-        Region = new Region(regionName);
+        Region = new Region(regionName: regionName);
         IsFreeTierEligible = isFreeTierEligible;
     }
 }

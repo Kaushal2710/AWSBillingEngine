@@ -41,6 +41,7 @@ public class Customer
             var ec2Instance = customer.GetEc2InstanceById(usage.InstanceId);
             var category = UsageType.OnDemand;
             var region = regions.First(region => region.RegionName.Equals(usage.RegionName));
+            var operatingSystem = usage.OperatingSystem;
             var ec2InstanceType = ec2InstanceTypes.First(type =>
                 type.Type.Equals(usage.InstanceType) && type.Region.RegionName.Equals(usage.RegionName));
 
@@ -51,7 +52,7 @@ public class Customer
                 customer.AddEc2Instance(ec2Instance);
             }
 
-            ec2Instance.AwsResourceUsages.Add(new AwsResourceUsage(usage.UsedFrom, usage.UsedUntil, category));
+            ec2Instance.AwsResourceUsages.Add(new AwsResourceUsage(usage.UsedFrom, usage.UsedUntil, category, operatingSystem));
         }
 
         return customer;
@@ -66,6 +67,8 @@ public class Customer
             var ec2Instance = customer.GetEc2InstanceById(usage.InstanceId);
             var category = UsageType.Reserved;
             var region = regions.First(region => region.RegionName.Equals(usage.RegionName));
+            var operatingSystem = usage.OperatingSystem;
+
             var ec2InstanceType = ec2InstanceTypes.First(type =>
                 type.Type.Equals(usage.InstanceType) && type.Region.RegionName.Equals(usage.RegionName));
 
@@ -76,7 +79,7 @@ public class Customer
                 customer.AddEc2Instance(ec2Instance);
             }
 
-            ec2Instance.AwsResourceUsages.Add(new AwsResourceUsage(usage.StartDate, usage.EndDate, category));
+            ec2Instance.AwsResourceUsages.Add(new AwsResourceUsage(usage.StartDate, usage.EndDate, category, operatingSystem));
         }
 
         return customer;
@@ -89,6 +92,11 @@ public class Customer
             .OrderBy(usage => usage.UsedFrom)
             .Select(usage => usage.UsedFrom)
             .FirstOrDefault();
+        /*
+         * FreeUsageStartDate is considered as the first day of the month of the first usage.
+         * FreeUsageEndDate is the freeUsageStartDate past 12 months.
+         */
+        freeUsageStartDate = new DateTime(freeUsageStartDate.Year, freeUsageStartDate.Month, 1);
         var freeUsageEndDate = freeUsageStartDate.AddMonths(12);
         return freeUsageEndDate;
     }

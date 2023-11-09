@@ -11,3 +11,7 @@ Sr No,Customer ID,EC2 Instance ID,EC2 Instance Type,Used From,Used Until,Region,
 10,CUST005,t3-vnjjz,t3.medium,2021-01-01T00:00:00,2021-02-01T00:00:00,US (Ohio),Windows
 11,CUST005,t3-ewgst,t3.medium,2021-03-01T00:00:00,2021-04-01T00:00:00,US (Ohio),Linux
 12,CUST005,t3-vnjjz,t3.medium,2021-03-01T00:00:00,2021-04-01T00:00:00,US (Ohio),Linux
+12,CUST006,t3-abc,t3.medium,2021-03-01T00:00:00,2021-03-02T00:00:00,US (Ohio),Linux
+12,CUST006,t3-xyz,t3.medium,2021-03-03T00:00:00,2021-03-04T00:00:00,US (Ohio),Linux
+12,CUST006,t3-xyz,t3.medium,2021-03-05T00:00:00,2021-03-06T00:00:00,US (Ohio),Linux
+12,CUST006,t3-abc,t3.medium,2021-03-05T00:00:00,2021-03-06T00:00:00,US (Ohio),Linux
